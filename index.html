@@ -180,6 +180,8 @@
     background:var(--surface);cursor:pointer;transition:border-color .15s,transform .15s}
   .fcard.live:hover{border-color:var(--accent);transform:translateY(-1px)}
   .fcard.soft{opacity:.72;cursor:default}
+  .fcard.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:#FFF9F4}
+  .fcard.active .fn{outline:2px solid var(--accent);outline-offset:1px}
   .fcard .fn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:14px;font-weight:700;color:#fff;flex:none}
   .fcard .tx b{font-size:13px;display:block;line-height:1.25} .fcard .tx span{font-size:11.5px;color:var(--muted)}
   .tagline{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;margin-top:5px;display:inline-block}
@@ -474,7 +476,9 @@
   chipDefs.forEach(function(d){
     var b=el('button','chip','<span class="n">'+d[0]+'</span>'+d[1]); b.onclick=function(){ go(d[2]); }; chips.appendChild(b);
   });
-  Array.prototype.forEach.call(document.querySelectorAll('.fcard.live'),function(f){ f.onclick=function(){ go(f.dataset.go); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('.fcard.live'),function(f){
+    f.onclick=function(){ window.open(location.pathname+'?fn='+f.dataset.go, '_blank'); };
+  });
 
   /* free input routing */
   function submit(){
@@ -490,12 +494,29 @@
   document.getElementById('send').onclick=submit;
   input.addEventListener('keydown',function(e){ if(e.key==='Enter') submit(); });
 
+  var FN_LABEL={suppliers:'取引先検索',quote:'見積書作成支援',manual:'マニュアル・規定参照',sales:'営業支援（行動予定）'};
+  function setActive(key){
+    Array.prototype.forEach.call(document.querySelectorAll('.fcard'),function(f){
+      f.classList.toggle('active', !!key && f.dataset.go===key);
+    });
+  }
   function welcome(){
-    inner.innerHTML='';
-    aiSay('こんにちは、サコス AI アシスタントです。👋<br>営業まわりの定型業務をお手伝いします。下の候補ボタン、または右の<b>「利用できる機能」</b>からお試しください。<br><span class="note">お試しいただける機能：①取引先検索 ②見積書作成 ③マニュアル・規定参照 ④営業支援（行動予定）</span>');
+    inner.innerHTML=''; setActive(null);
+    try{ document.title='サコス AI アシスタント ｜ Copilot Studio 操作デモ'; }catch(e){}
+    aiSay('こんにちは、サコス AI アシスタントです。👋<br>営業まわりの定型業務をお手伝いします。下の候補ボタン、または右の<b>「利用できる機能」</b>からお試しください。<br><span class="note">お試しいただける機能：①取引先検索 ②見積書作成 ③マニュアル・規定参照 ④営業支援（行動予定）。機能名をクリックすると、その機能専用の会話を新しいタブで開きます。</span>');
+  }
+  function openFn(key){
+    inner.innerHTML=''; busy=false; setActive(key);
+    quote.days=14; quote.items[0].qty=2;
+    try{ document.title='サコス AI ｜ '+FN_LABEL[key]; }catch(e){}
+    aiSay('<b>'+FN_LABEL[key]+'</b> を開きました。この会話では本機能をお試しいただけます。<br><span class="note">他の機能は右の「利用できる機能」から、それぞれ新しいタブで開けます。</span>');
+    go(key);
   }
   document.getElementById('reset').onclick=function(){ quote.days=14; quote.items[0].qty=2; busy=false; welcome(); };
-  welcome();
+
+  var _fn=null;
+  try{ _fn=new URLSearchParams(location.search).get('fn'); }catch(e){}
+  if(_fn && scenarios[_fn]) openFn(_fn); else welcome();
 })();
 </script>
 </body>
