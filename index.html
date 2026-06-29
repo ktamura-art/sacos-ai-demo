@@ -125,6 +125,30 @@
   .saved .fn{font-weight:700;font-size:13px;color:var(--navy)} .saved .fp{font-size:11.5px;color:var(--ink-2)}
   .saved .ok{margin-left:auto;color:var(--ok);font-weight:700;font-size:12.5px;white-space:nowrap}
 
+  /* ---- Excel sheet (転記アニメ) ---- */
+  .xls{border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:var(--shadow);max-width:680px;background:#fff}
+  .xls .bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#107c41;color:#fff}
+  .xls .bar .xi{width:26px;height:26px;border-radius:6px;background:#fff;color:#107c41;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+  .xls .bar .fn{font-weight:700;font-size:12.5px;line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .xls .bar .st{margin-left:auto;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .xls .grid{overflow-x:auto}
+  table.sheet{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;width:100%;min-width:580px;background:#fff;color:#222}
+  table.sheet td,table.sheet th{border:1px solid #e3e4e6;padding:5px 8px;height:27px;white-space:nowrap}
+  table.sheet th{background:#f5f6f7;color:#888d95;font-weight:600;text-align:center;font-size:11px}
+  table.sheet td.rn{background:#f5f6f7;color:#888d95;text-align:center;width:32px;font-size:11px;font-weight:600}
+  table.sheet td.num{text-align:right}
+  table.sheet td.ttl{font-size:14.5px;font-weight:800;color:#107c41}
+  table.sheet td.b{font-weight:700}
+  table.sheet td.hd{background:#faf3e8;font-weight:700;color:#B9551A;text-align:center}
+  table.sheet td.sumlbl{font-weight:700;text-align:right;color:#46506B}
+  table.sheet td.sum{font-weight:700}
+  table.sheet tr.totrow td{border-top:2px solid #107c41}
+  .xls .tabs{display:flex;padding:6px 10px;background:#f5f6f7;border-top:1px solid #e3e4e6}
+  .xls .tabs .tb{font-size:11.5px;font-weight:700;color:#107c41;padding:4px 14px;background:#fff;border-radius:5px 5px 0 0;border:1px solid #e3e4e6;border-bottom:2px solid #107c41}
+  table.sheet td.xc{transition:background .25s}
+  table.sheet td.xc.flash{background:#d6efdf}
+  @media(prefers-reduced-motion:reduce){table.sheet td.xc{transition:none}}
+
   .cite{display:flex;flex-direction:column;gap:7px;margin-top:13px;padding-top:12px;border-top:1px dashed var(--line)}
   .cite .lab{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.03em}
   .src{display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--line-2);
@@ -328,16 +352,57 @@
     c.querySelector('[data-act="qty"]').onclick=function(){ if(busy)return; quote.items[0].qty=3; addUser('高所作業車を3台に変更して'); run(function(){ aiSay(cardQuote('高所作業車を <b>2台 → 3台</b> に変更し、金額を再計算しました。')); }); };
     return c;
   }
+  function cardExcel(){
+    var sub=0;
+    var lines=quote.items.map(function(it){
+      var amt=it.rental? it.unit*it.qty*quote.days : it.unit*it.qty; sub+=amt; return {it:it,amt:amt};
+    });
+    var tax=Math.round(sub*0.1), tot=sub+tax;
+    var E='<td></td>';
+    function xc(v,cls){ return '<td class="xc '+(cls||'')+'" data-v="'+v+'"></td>'; }
+    function st(t,cls){ return '<td class="'+(cls||'')+'">'+t+'</td>'; }
+    var rows=[], rn=0;
+    function row(cells){ rn++; rows.push('<tr><td class="rn">'+rn+'</td>'+cells+'</tr>'); }
+    row(st('御見積書','ttl')+E+E+E+E);
+    row(E+E+E+E+E);
+    row(xc('大成フロンティア建設（株）　御中','b')+E+E+st('見積番号','sumlbl')+xc('Q-2026-0626-018'));
+    row(xc('件名：みなと第二ビル新築工事')+E+E+st('作成日','sumlbl')+xc('2026/06/26'));
+    row(E+E+E+E+E);
+    row(st('品目','hd')+st('単価','hd')+st('数量','hd')+st('日数','hd')+st('金額','hd'));
+    lines.forEach(function(L){ var it=L.it;
+      row(xc(it.name)+xc(yen(it.unit),'num')+xc(it.qty+(it.rental?'台':'式'),'num')+
+          xc(it.rental?quote.days+'日':'—','num')+xc(yen(L.amt),'num b'));
+    });
+    row(E+E+E+E+E);
+    rn++; rows.push('<tr class="totrow"><td class="rn">'+rn+'</td>'+E+E+E+st('小計','sumlbl')+xc(yen(sub),'num sum')+'</tr>');
+    row(E+E+E+st('消費税（10%）','sumlbl')+xc(yen(tax),'num sum'));
+    row(E+E+E+st('合計','sumlbl b')+xc(yen(tot),'num ttl'));
+    var head='<tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>';
+    var c=el('div','xls');
+    c.innerHTML='<div class="bar"><div class="xi">X</div>'+
+      '<div class="fn">御見積書_大成フロンティア建設_みなと第二ビル_20260626.xlsx</div>'+
+      '<div class="st xls-st">● 転記中…</div></div>'+
+      '<div class="grid"><table class="sheet">'+head+rows.join('')+'</table></div>'+
+      '<div class="tabs"><div class="tb">見積</div></div>';
+    return c;
+  }
+  function animateExcel(node){
+    var cells=[].slice.call(node.querySelectorAll('.xc')), stt=node.querySelector('.xls-st');
+    function done(){ if(stt) stt.textContent='✓ OneDrive に保存済み'; }
+    if(reduce){ cells.forEach(function(c){ c.textContent=c.dataset.v; }); done(); return; }
+    var i=0;
+    (function step(){
+      if(i>=cells.length){ done(); return; }
+      var c=cells[i++]; c.textContent=c.dataset.v; c.classList.add('flash'); scroll();
+      setTimeout(function(){ c.classList.remove('flash'); }, 260);
+      setTimeout(step, 95);
+    })();
+  }
   function saveQuote(){
-    addUser('この内容でExcelを保存して');
+    addUser('この内容でExcelに転記して保存して');
     run(function(){
-      var c=el('div','card'); c.style.maxWidth='560px';
-      c.innerHTML='<div class="cb"><div class="saved"><div class="od">⬛</div>'+
-        '<div><div class="fn">御見積書_大成フロンティア建設_みなと第二ビル_20260626.xlsx</div>'+
-        '<div class="fp">OneDrive ＞ 営業部 ＞ 見積 ＞ 2026 に保存しました</div></div>'+
-        '<div class="ok">✓ 保存完了</div></div>'+
-        '<p class="note">Teams上のメンバーへ共有可能です。フォーマット（ロゴ・項目・捺印欄）は御社ひな形に合わせて調整できます。</p></div>';
-      aiSay(c);
+      aiSay('OneDrive上にExcelの見積書を作成し、明細を1セルずつ転記しています…<br><span class="note">生成中のファイル（実際のフォーマットは御社ひな形に合わせて設計します）：</span>');
+      var card=cardExcel(); aiSay(card); animateExcel(card);
     });
   }
 
@@ -433,6 +498,5 @@
   welcome();
 })();
 </script>
-
 </body>
 </html>
